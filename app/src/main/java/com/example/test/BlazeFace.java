@@ -28,7 +28,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BlazeFace extends TFLiteModel<BBox> {
+public class BlazeFace extends TFLiteModel<ArrayList<BBox>> {
     private TensorBuffer boxesBuffer;
 
     private TensorBuffer scoresBuffer;

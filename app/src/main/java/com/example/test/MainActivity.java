@@ -1,5 +1,10 @@
 package com.example.test;
 
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.PointF;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.graphics.Bitmap;
 import android.Manifest;
@@ -14,8 +19,10 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
+import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -41,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
 import org.tensorflow.lite.support.image.TensorImage;
@@ -51,6 +59,7 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
 
     private static final String TAG = "APP";
     private BlazeFace faceDetector;
+    private FaceMesh landmarksDetector;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,6 +81,13 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         } catch (IOException ex) {
         }
         faceDetector = new BlazeFace(modelFile, -1);
+
+        try {
+            modelFile = getResourcePath(getAssets().open("face_landmark.tflite"), "face_landmark", "tflite");
+        } catch (IOException ex) {
+        }
+        landmarksDetector = new FaceMesh(modelFile, -1);
+
         if(checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 0);
         } else {
@@ -89,15 +105,6 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             e.printStackTrace();
         }
         return path;
-    }
-
-    /** Memory-map the model file in Assets. */
-    private MappedByteBuffer loadModelFile(String modelPath) throws IOException {
-        Log.i(TAG, "Reading model asset file: " + modelPath);
-        File file=new File(modelPath);
-        FileInputStream inputStream = new FileInputStream(file);
-        FileChannel fileChannel = inputStream.getChannel();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
     }
 
     private void setupCamera() {
@@ -133,6 +140,33 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
     private long prevFrameTime = 0;
     private long newFrameTime = 0;
 
+    protected final float[] ptransform(Bitmap bitmap, FaceMeshMData mdata, int imageWidth, int imageHeight, int inputWidth, int inputHeight) {
+        Rect faceRect = FaceMesh.enlargeFaceRoi(mdata.faceRect, imageWidth, imageHeight);
+        int faceRoiWidth = faceRect.width();
+        int faceRoiHeight = faceRect.height();
+        PointF rotationCenter = new PointF((faceRect.left + faceRect.right) * 0.5f, (faceRect.top + faceRect.bottom) * 0.5f);
+        double rotationRad = FaceMesh.calculateRotationRad(mdata.leftEye, mdata.rightEye);
+
+        float[] dstPoints = {0, 0,
+                inputWidth, 0,
+                inputWidth, inputHeight,
+                0, inputHeight};
+        float[] srcPoints = {faceRect.left, faceRect.top,
+                faceRect.right, faceRect.top,
+                faceRect.right, faceRect.bottom,
+                faceRect.left, faceRect.bottom};
+
+        srcPoints = FaceMesh.rotatePoints(srcPoints, rotationRad, rotationCenter);
+
+//        Matrix m = new Matrix();
+//        m.setPolyToPoly(srcPoints, 0, dstPoints, 0, dstPoints.length >> 1);
+//        Bitmap dstBitmap = Bitmap.createBitmap(inputWidth, inputHeight, Bitmap.Config.ARGB_8888);
+//        Canvas canvas = new Canvas(dstBitmap);
+//        canvas.clipRect(0, 0, inputWidth, inputHeight);
+//        canvas.drawBitmap(bitmap, m, null);
+
+        return srcPoints; // dstBitmap;
+    }
 
     @Override
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
@@ -143,13 +177,37 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
 //        Imgproc.putText(frame, "HELLO WORLD", new Point(10, 40),
 //                Imgproc.FONT_HERSHEY_COMPLEX, 1.8, new Scalar(0, 255, 0), 6);
         ArrayList<BBox> boxes = faceDetector.run(bmp, null);
+        Bitmap res = Bitmap.createBitmap(196, 196, Bitmap.Config.ARGB_8888);
+        Mat f = new Mat();
         for (BBox b : boxes) {
-            Imgproc.rectangle(frame, new Point(b.face.left, b.face.top), new Point(b.face.right, b.face.bottom), new Scalar(244,255,255), 2);
+            Rect faceRect = FaceMesh.enlargeFaceRoi(b.face, frame.width(), frame.height());
+            Imgproc.rectangle(frame, new Point(b.face.left, b.face.top), new Point(b.face.right, b.face.bottom), new Scalar(0,0,0), 2);
+            Imgproc.rectangle(frame, new Point(faceRect.left, faceRect.top), new Point(faceRect.right,faceRect.bottom), new Scalar(255,0,0), 2);
             Imgproc.circle(frame, new Point(b.leftEye.x, b.leftEye.y), 2, new Scalar(0,255,255), -1);
             Imgproc.circle(frame, new Point(b.rightEye.x, b.rightEye.y), 2, new Scalar(0,255,255), -1);
             Imgproc.circle(frame, new Point(b.mouth.x, b.mouth.y), 2, new Scalar(0,255,255), -1);
             Imgproc.circle(frame, new Point(b.nose.x, b.nose.y), 2, new Scalar(0,255,255), -1);
+            FaceMeshMData mdata = new FaceMeshMData();
+            mdata.faceRect = b.face;
+            mdata.leftEye = b.leftEye;
+            mdata.rightEye = b.rightEye;
+            FacialLandmarks lms = landmarksDetector.run(bmp, mdata);
+            float[] r = ptransform(bmp, mdata, frame.width(), frame.height(), 192, 192);
+//            double rotationRad = FaceMesh.calculateRotationRad(mdata.leftEye, mdata.rightEye);
+//            RotatedRect rotRect = new RotatedRect(new Point(b.face.left, b.face.top), new Size(b.face.right - b.face.left, b.face.bottom - b.face.top), rotationRad);
+            for (int j = 0; j < r.length / 2; j++) {
+                Point first = new Point(r[2 * j], r[2 * j + 1]);
+                Point second = new Point(r[2 * (j + 1) % 8], r[(2 * (j + 1) + 1) % 8]);
+                Imgproc.line(frame, first, second, new Scalar(244,255,255), 2);
+            }
+//            Utils.bitmapToMat(res, f);
+//            Mat roi = frame.submat(new org.opencv.core.Rect(0, 0, 196, 196));
+//            f.copyTo(roi);
+            for (PointF p : lms.faceOval) {
+                Imgproc.circle(frame, new Point(p.x, p.y), 2, new Scalar(0,255,255), -1);
+            }
         }
+
         double fps = 1000.f / (newFrameTime - prevFrameTime);
         prevFrameTime = newFrameTime;
         Imgproc.putText(frame, String.format("%.2f", fps)  + " FPS", new Point(10, 40), Imgproc.FONT_HERSHEY_COMPLEX, 1.8, new Scalar(100, 100, 120), 6);

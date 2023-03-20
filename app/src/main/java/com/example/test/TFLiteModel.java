@@ -37,6 +37,8 @@ abstract public class TFLiteModel<T> {
     protected ArrayList<DataType> outputDataTypes  = new ArrayList<DataType>();
     protected ArrayList<int[]> outputShapes  = new ArrayList<int[]>();
 
+    protected MetaData mdata;
+
     private MappedByteBuffer loadModelFile(String modelPath) throws IOException {
         Log.i(TAG, "Load asset model file: " + modelPath);
         File file=new File(modelPath);
@@ -66,7 +68,7 @@ abstract public class TFLiteModel<T> {
     abstract protected void getInputsOutputsInfo();
 
     abstract protected TensorImage preprocess(Bitmap bitmap);
-    abstract public ArrayList<T> run(Bitmap bitmap, MetaData mdata);
-    abstract protected ArrayList<T> postprocess();
+    abstract public T run(Bitmap bitmap, MetaData mdata);
+    abstract protected T postprocess();
 
 }
