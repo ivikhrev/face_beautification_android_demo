@@ -184,6 +184,12 @@ public class FaceMesh extends TFLiteModel<FacialLandmarks> {
         FacialLandmarks lms = new FacialLandmarks();
 
         lms.faceOval = fillLandmarks(landmarks, faceOvalIdx);
+        lms.leftEye = fillLandmarks(landmarks, leftEyeIdx);
+        lms.leftBrow = fillLandmarks(landmarks, leftBrowIdx);
+        lms.rightEye = fillLandmarks(landmarks, rightEyeIdx);
+        lms.rightBrow = fillLandmarks(landmarks, rightBrowIdx);
+        lms.nose = fillLandmarks(landmarks, noseIdx);
+        lms.lips = fillLandmarks(landmarks, lipsIdx);
 
         return lms;
     }
