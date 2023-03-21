@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.opencv.utils.Converters;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.Tensor;
@@ -73,7 +74,16 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             Log.i(TAG, "Load OpenCV library");
         } catch (UnsatisfiedLinkError e) {
             Log.e("UnsatisfiedLinkError",
-                    "Failed to load native OpenVINO libraries\n" + e.toString());
+                    "Failed to load native OpenCV libraries\n" + e.toString());
+            System.exit(1);
+        }
+
+        try{
+            System.loadLibrary(FILTERS_LIBRARY_NAME);
+            Log.i(TAG, "Load filters library");
+        } catch (UnsatisfiedLinkError e) {
+            Log.e("UnsatisfiedLinkError",
+                    "Failed to load native filters libraries\n" + e.toString());
             System.exit(1);
         }
 
@@ -82,13 +92,13 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             modelFile = getResourcePath(getAssets().open("face_detection_short_range.tflite"), "face_detection_short_range", "tflite");
         } catch (IOException ex) {
         }
-        faceDetector = new BlazeFace(modelFile, -1);
+        faceDetector = new BlazeFace(modelFile, 4);
 
         try {
             modelFile = getResourcePath(getAssets().open("face_landmark.tflite"), "face_landmark", "tflite");
         } catch (IOException ex) {
         }
-        landmarksDetector = new FaceMesh(modelFile, -1);
+        landmarksDetector = new FaceMesh(modelFile, 4);
 
         if(checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 0);
@@ -142,34 +152,6 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
     private long prevFrameTime = 0;
     private long newFrameTime = 0;
 
-//    protected final float[] ptransform(Bitmap bitmap, FaceMeshMData mdata, int imageWidth, int imageHeight, int inputWidth, int inputHeight) {
-//        Rect faceRect = FaceMesh.enlargeFaceRoi(mdata.faceRect, imageWidth, imageHeight);
-//        int faceRoiWidth = faceRect.width();
-//        int faceRoiHeight = faceRect.height();
-//        PointF rotationCenter = new PointF((faceRect.left + faceRect.right) * 0.5f, (faceRect.top + faceRect.bottom) * 0.5f);
-//        double rotationRad = FaceMesh.calculateRotationRad(mdata.leftEye, mdata.rightEye);
-//
-//        float[] dstPoints = {0, 0,
-//                inputWidth, 0,
-//                inputWidth, inputHeight,
-//                0, inputHeight};
-//        float[] srcPoints = {faceRect.left, faceRect.top,
-//                faceRect.right, faceRect.top,
-//                faceRect.right, faceRect.bottom,
-//                faceRect.left, faceRect.bottom};
-//
-//        srcPoints = FaceMesh.rotatePoints(srcPoints, rotationRad, rotationCenter);
-//
-////        Matrix m = new Matrix();
-////        m.setPolyToPoly(srcPoints, 0, dstPoints, 0, dstPoints.length >> 1);
-////        Bitmap dstBitmap = Bitmap.createBitmap(inputWidth, inputHeight, Bitmap.Config.ARGB_8888);
-////        Canvas canvas = new Canvas(dstBitmap);
-////        canvas.clipRect(0, 0, inputWidth, inputHeight);
-////        canvas.drawBitmap(bitmap, m, null);
-//
-//        return srcPoints; // dstBitmap;
-//    }
-
     private void drawLandmarks(Mat frame, ArrayList<PointF> landmarks) {
         ArrayList<Point> pts = new ArrayList<>();
         for (PointF p : landmarks) {
@@ -198,11 +180,8 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         Imgproc.cvtColor(frame, frame, Imgproc.COLOR_RGBA2BGR);
         Bitmap bmp = Bitmap.createBitmap(frame.cols(), frame.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(frame, bmp);
-//        Imgproc.putText(frame, "HELLO WORLD", new Point(10, 40),
-//                Imgproc.FONT_HERSHёEY_COMPLEX, 1.8, new Scalar(0, 255, 0), 6);
         ArrayList<BBox> boxes = faceDetector.run(bmp, null);
-        Bitmap res = Bitmap.createBitmap(196, 196, Bitmap.Config.ARGB_8888);
-        Mat f = new Mat();
+
         for (BBox b : boxes) {
 //            Rect faceRect = FaceMesh.enlargeFaceRoi(b.face, frame.width(), frame.height());
 //            Imgproc.rectangle(frame, new Point(b.face.left, b.face.top), new Point(b.face.right, b.face.bottom), new Scalar(0,0,0), 2);
@@ -227,8 +206,8 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
 //            Utils.bitmapToMat(res, f);
 //            Mat roi = frame.submat(new org.opencv.core.Rect(0, 0, 196, 196));
 //            f.copyTo(roi);
-            frame = Filters.beautifyFace(frame, b.face, lms);
-//            renderResults(frame, lms);
+            Filters.beautifyFace(frame, b.face, lms);
+            renderResults(frame, lms);
         }
 
         double fps = 1000.f / (SystemClock.elapsedRealtime() - newFrameTime);
@@ -238,5 +217,7 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         return frame;
     }
     public static final String OPENCV_LIBRARY_NAME = "opencv_java4";
+    public static final String FILTERS_LIBRARY_NAME = "filters";
+
     private CameraBridgeViewBase mOpenCvCameraView;
 }

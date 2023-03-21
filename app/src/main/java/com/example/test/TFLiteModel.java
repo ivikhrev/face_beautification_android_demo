@@ -3,8 +3,12 @@ package com.example.test;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.gpu.CompatibilityList;
+import org.tensorflow.lite.gpu.GpuDelegate;
+import org.tensorflow.lite.DelegateFactory;
+import org.tensorflow.lite.Delegate.*;
+import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Tensor;
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -26,7 +30,7 @@ abstract public class TFLiteModel<T> {
     protected MappedByteBuffer model;
     protected Interpreter interpreter;
     protected final Interpreter.Options options = new Interpreter.Options();
-
+    protected final CompatibilityList compatList = new CompatibilityList();
     protected int nthreads;
     protected int imageWidth;
     protected int imageHeight;
@@ -61,6 +65,15 @@ abstract public class TFLiteModel<T> {
 
     protected void readModel(final String modelFile) {
         Log.i(TAG, "Reading model");
+//        if(compatList.isDelegateSupportedOnThisDevice()){
+//            // if the device has a supported GPU, add the GPU delegate
+//            GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+//            GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+//            options.addDelegate(gpuDelegate);
+//        } else {
+//            // if the GPU is not supported, run on 4 threads
+//            options.setNumThreads(nthreads);
+//        }
         options.setNumThreads(nthreads);
         interpreter = new Interpreter(model, options);
     }
