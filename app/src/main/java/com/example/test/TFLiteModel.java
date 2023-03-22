@@ -65,16 +65,17 @@ abstract public class TFLiteModel<T> {
 
     protected void readModel(final String modelFile) {
         Log.i(TAG, "Reading model");
-//        if(compatList.isDelegateSupportedOnThisDevice()){
-//            // if the device has a supported GPU, add the GPU delegate
-//            GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
-//            GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
-//            options.addDelegate(gpuDelegate);
-//        } else {
-//            // if the GPU is not supported, run on 4 threads
-//            options.setNumThreads(nthreads);
-//        }
-        options.setNumThreads(nthreads);
+        if(compatList.isDelegateSupportedOnThisDevice()){
+            // if the device has a supported GPU, add the GPU delegate
+            GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
+            GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
+            options.addDelegate(gpuDelegate);
+        } else {
+            // if the GPU is not supported, run on 4 threads
+            options.setNumThreads(nthreads);
+            options.setUseNNAPI(true);
+        }
+
         interpreter = new Interpreter(model, options);
     }
 

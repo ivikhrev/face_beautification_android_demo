@@ -87,6 +87,15 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             System.exit(1);
         }
 
+
+        if(checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0);
+        } else {
+            setupCamera();
+        }
+    }
+
+    private void initModels() {
         String modelFile = "";
         try {
             modelFile = getResourcePath(getAssets().open("face_detection_short_range.tflite"), "face_detection_short_range", "tflite");
@@ -99,12 +108,6 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         } catch (IOException ex) {
         }
         landmarksDetector = new FaceMesh(modelFile, 4);
-
-        if(checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0);
-        } else {
-            setupCamera();
-        }
     }
 
     private static String getResourcePath(InputStream in, String name, String ext) {
@@ -175,6 +178,9 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
     }
     @Override
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
+        if (faceDetector == null || landmarksDetector == null) {
+            initModels();
+        }
         long newFrameTime = SystemClock.elapsedRealtime();
         Mat frame = inputFrame.rgba();
         Imgproc.cvtColor(frame, frame, Imgproc.COLOR_RGBA2BGR);
@@ -183,7 +189,7 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         ArrayList<BBox> boxes = faceDetector.run(bmp, null);
 
         for (BBox b : boxes) {
-//            Rect faceRect = FaceMesh.enlargeFaceRoi(b.face, frame.width(), frame.height());
+            Rect faceRect = FaceMesh.enlargeFaceRoi(b.face, frame.width(), frame.height());
 //            Imgproc.rectangle(frame, new Point(b.face.left, b.face.top), new Point(b.face.right, b.face.bottom), new Scalar(0,0,0), 2);
 //            Imgproc.rectangle(frame, new Point(faceRect.left, faceRect.top), new Point(faceRect.right,faceRect.bottom), new Scalar(255,0,0), 2);
 //            Imgproc.circle(frame, new Point(b.leftEye.x, b.leftEye.y), 2, new Scalar(0,255,255), -1);
@@ -195,23 +201,12 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             mdata.leftEye = b.leftEye;
             mdata.rightEye = b.rightEye;
             FacialLandmarks lms = landmarksDetector.run(bmp, mdata);
-//            float[] r = ptransform(bmp, mdata, frame.width(), frame.height(), 192, 192);
-//            double rotationRad = FaceMesh.calculateRotationRad(mdata.leftEye, mdata.rightEye);
-//            RotatedRect rotRect = new RotatedRect(new Point(b.face.left, b.face.top), new Size(b.face.right - b.face.left, b.face.bottom - b.face.top), rotationRad);
-//            for (int j = 0; j < r.length / 2; j++) {
-//                Point first = new Point(r[2 * j], r[2 * j + 1]);
-//                Point second = new Point(r[2 * (j + 1) % 8], r[(2 * (j + 1) + 1) % 8]);
-//                Imgproc.line(frame, first, second, new Scalar(244,255,255), 2);
-//            }
-//            Utils.bitmapToMat(res, f);
-//            Mat roi = frame.submat(new org.opencv.core.Rect(0, 0, 196, 196));
-//            f.copyTo(roi);
-            Filters.beautifyFace(frame, b.face, lms);
+
+            Filters.beautifyFace(frame, faceRect, lms);
             renderResults(frame, lms);
         }
 
         double fps = 1000.f / (SystemClock.elapsedRealtime() - newFrameTime);
-//        prevFrameTime = newFrameTime;
         Imgproc.putText(frame, String.format("%.2f", fps)  + " FPS", new Point(10, 40), Imgproc.FONT_HERSHEY_COMPLEX, 1.8, new Scalar(100, 100, 120), 6);
         Imgproc.cvtColor(frame, frame, Imgproc.COLOR_BGR2RGBA);
         return frame;
