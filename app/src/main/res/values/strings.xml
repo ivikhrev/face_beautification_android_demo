@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">face_beautification_demo</string>
+    <string name="monitors_switch">HW resources usage</string>
+    <string name="fps_switch">Show FPS</string>
+    <string name="device_buttons">Device</string>
+    <string name="CPU">CPU</string>
+    <string name="GPU">GPU</string>
+    <string name="threads_picker">Threads number</string>
 </resources>

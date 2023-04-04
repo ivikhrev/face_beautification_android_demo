@@ -1,40 +1,15 @@
 package com.yadro.face_beautification_demo;
 
-import static org.opencv.imgproc.Imgproc.Laplacian;
-import static org.opencv.imgproc.Imgproc.fillPoly;
-import static org.opencv.imgproc.Imgproc.medianBlur;
-
 import android.graphics.PointF;
-import android.graphics.Rect;
-
-import org.checkerframework.checker.units.qual.A;
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
-import org.opencv.core.Scalar;
 import org.opencv.utils.Converters;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Filters {
-    private static Mat fillPolyContours(int width, int height, ArrayList<MatOfPoint> contours) {
-        Mat out = new Mat(height, width, CvType.CV_8UC1, new Scalar(0));
-        fillPoly(out, contours, new Scalar(255, 255, 255));
-        return out;
-    }
-
-    private static Mat unsharpMask(Mat src, final int blurKSize, final float strength) {
-        Mat blurred = new Mat();
-        medianBlur(src, blurred, blurKSize);
-        Mat laplacian = new Mat();
-        Laplacian(blurred, laplacian,  CvType.CV_8U);
-        Core.multiply(laplacian, new Scalar(strength), laplacian);
-        Core.subtract(src, laplacian, laplacian);
-        return laplacian;
-    }
 
     private static MatOfPoint convertToMatOfPoints(ArrayList<PointF> arr) {
         ArrayList<Point> ocvPoints = new ArrayList<>();
@@ -45,8 +20,6 @@ public class Filters {
         MatOfPoint mop = new MatOfPoint();
         mop.getNativeObjAddr();
         mop.fromList(ocvPoints);
-//        ArrayList<MatOfPoint> res = new ArrayList<MatOfPoint>();
-//        res.add(mop);
         return mop;
     }
 

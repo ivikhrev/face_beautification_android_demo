@@ -7,4 +7,10 @@ public class FaceMeshMData extends MetaData {
     Rect faceRect;
     PointF leftEye;
     PointF rightEye;
+
+    public FaceMeshMData(Rect faceRect, PointF leftEye, PointF rightEye) {
+        this.faceRect = faceRect;
+        this.leftEye = leftEye;
+        this.rightEye = rightEye;
+    }
 }

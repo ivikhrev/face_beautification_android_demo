@@ -5,11 +5,6 @@ import android.graphics.Rect;
 
 public class BBox {
     Rect face;
-//    float left;
-//    float top;
-//    float right;
-//    float bottom;
-
     PointF leftEye;
     PointF rightEye;
     PointF nose;

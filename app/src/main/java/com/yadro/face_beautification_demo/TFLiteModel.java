@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.util.Log;
 
 import org.tensorflow.lite.DataType;
-import org.tensorflow.lite.Delegate.*;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.CompatibilityList;
 import org.tensorflow.lite.gpu.GpuDelegate;
@@ -31,9 +30,9 @@ abstract public class TFLiteModel<T> {
     protected int inputWidth;
     protected int inputHeight;
     protected ImageProcessor imgProcessor;
-    protected ArrayList<String> outputNames = new ArrayList<String>();
-    protected ArrayList<DataType> outputDataTypes  = new ArrayList<DataType>();
-    protected ArrayList<int[]> outputShapes  = new ArrayList<int[]>();
+    protected ArrayList<String> outputNames = new ArrayList<>();
+    protected ArrayList<DataType> outputDataTypes  = new ArrayList<>();
+    protected ArrayList<int[]> outputShapes  = new ArrayList<>();
 
     protected MetaData mdata;
 
@@ -63,19 +62,28 @@ abstract public class TFLiteModel<T> {
 
     protected void readModel(final String modelFile) throws IllegalArgumentException {
         Log.i(TAG, "Reading model");
-        if(device == "GPU" && compatList.isDelegateSupportedOnThisDevice()){
+//        boolean isGPUSupported = compatList.isDelegateSupportedOnThisDevice();
+        if(device.equals("GPU")) {
             // if the device has a supported GPU, add the GPU delegate
             GpuDelegate.Options delegateOptions = compatList.getBestOptionsForThisDevice();
             GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions);
             options.addDelegate(gpuDelegate);
-        } else if (device == "CPU"){
-            // if the GPU is not supported, run on 4 threads
+            Log.i(TAG, "Delegate: GPU");
+//        } else if (device.equals("GPU") && !isGPUSupported) {
+//            Log.w(TAG, "GPU Delegate is unsupported on this device! Fallback to CPU");
+//            options.setNumThreads(nthreads);
+//            options.setUseXNNPACK(true);
+//            Log.i(TAG, "Delegate: CPU");
+//            Log.i(TAG, "Threads number: " + nthreads);
+        } else if (device.equals("CPU")) {
             options.setNumThreads(nthreads);
-            options.setUseNNAPI(true);
-        } else {
+            options.setUseXNNPACK(true);
+            Log.i(TAG, "Delegate: CPU");
+            Log.i(TAG, "Threads number: " + nthreads);
+        }
+        else {
             throw new IllegalArgumentException("Unknown device provided: " + device);
         }
-
         interpreter = new Interpreter(model, options);
     }
 

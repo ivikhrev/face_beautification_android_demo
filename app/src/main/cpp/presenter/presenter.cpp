@@ -5,9 +5,9 @@
 #include <monitors/presenter.h>
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_yadro_face_1beautification_1demo_Presenter_getPresenter(JNIEnv * env, jobject jobj, jstring keysJObj) {
+Java_com_yadro_face_1beautification_1demo_Presenter_getPresenter(JNIEnv * env, jobject jobj, jstring keysJObj, jint yPos) {
     const char* keys = env->GetStringUTFChars(keysJObj, 0);
-    Presenter* presenter = new Presenter(keys);
+    Presenter* presenter = new Presenter(keys, yPos);
     return (jlong)presenter;
 }
 
@@ -24,7 +24,7 @@ Java_com_yadro_face_1beautification_1demo_Presenter_handleKey_1(JNIEnv * env, jo
     presenter->handleKey((int)key);
 }
 
-JNIEXPORT void JNICALL
+extern "C" JNIEXPORT void JNICALL
 Java_com_yadro_face_1beautification_1demo_Presenter_delete(JNIEnv *, jobject, jlong presenterAddr) {
     Presenter* presenter = (Presenter*)presenterAddr;
     delete presenter;
